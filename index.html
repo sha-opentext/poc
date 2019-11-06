@@ -1,0 +1,238 @@
+<html>
+
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <style>
+    .splitscreen {
+      display: flex;
+    }
+
+    .splitscreen .left {
+      flex: 1;
+    }
+
+    .splitscreen .right {
+      flex: 1;
+    }
+
+    #initial {
+      font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+      width: 40%;
+    }
+
+    #UFTTable {
+      font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+      border-collapse: collapse;
+      width: 40%;
+    }
+
+    #UFTTable td,
+    #UFTTable th,
+    #initial td,
+    #initial th {
+      border: 1px solid #ddd;
+
+    }
+
+    #UFTTable tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    #UFTTable tr:hover {
+      background-color: #ddd;
+    }
+
+    div.textarea {
+      padding-right: 50px;
+    }
+
+    #UFTTable th {
+      padding-top: 12px;
+      padding-bottom: 12px;
+      text-align: center;
+      color: black;
+    }
+
+    textarea {
+      width: 100%;
+      height: 300px;
+      padding: 12px 20px;
+      box-sizing: border-box;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      background-color: #f8f8f8;
+      resize: none;
+    }
+  </style>
+</head>
+
+<table style="width:50%" id="initial">
+  <tr>
+    <th>PacakgePath</th>
+    <th><input type="text" id="packagepath"></th>
+    <th><Button type="Button" id="b1">Browse</Button></th>
+  </tr>
+  <tr>
+    <th>SrcPath</th>
+    <th><input type="text" id="srcpath"></th>
+    <th><Button type="Button" id="b1">Browse</Button></th>
+  </tr>
+  <tr>
+    <th>UTFpath</th>
+    <th><input type="text" id="utfpath"></th>
+    <th><Button type="Button" id="b1">Browse</Button></th>
+  </tr>
+</table>
+<tr>
+  <button type="button" id="getFn" onclick="listfn()">GetFunctions</button>
+</tr>
+
+
+
+<div class="splitscreen">
+  <div class="left" id="cont">
+  </div>
+  <div class="right" id="textarea">
+    <textarea id="tarea" rows="50" cols="50">
+</textarea>
+  </div>
+</div>
+
+
+
+<script>
+  var settings = {
+    "async": true,
+    "crossDomain": true,
+    "url": "http://localhost:8080/migration/rest/hello?=",
+    "method": "GET",
+    "headers": {
+      "Accept": "text/plain",
+    }
+  }
+
+  document.getElementById("tarea").style.visibility = "hidden";
+  function listfn() {
+    if (document.getElementById("UFTTable") == undefined) {
+      document.getElementById("getFn").style.visibility = "hidden";
+      createTable()
+      $.ajax(settings).done(function (response) {
+        var obj = JSON.parse(response);
+        var i;
+        var uftList = obj.UFTFunctions.fnsList; //length=3
+
+        var str = obj.UFTFunctions.fnsList + '';
+        var res = str.split(',').join('\n');
+
+        var table = document.getElementById("UFTTable");
+        for (i = 0; i < uftList.length; i++) {
+          var tr = UFTTable.insertRow();
+          var th = document.createElement("BUTTON");
+          th.innerHTML = uftList[i];
+          tr.appendChild(th);
+        }
+        var bns = document.getElementsByTagName("BUTTON");
+
+        for (i = 1; i < bns.length; i++) {
+          bns[i].addEventListener("click", function (event) {
+            document.getElementById("tarea").style.visibility = "visible";
+            var clickedUFTfn = event.target.innerHTML;
+            var flag = 0;
+            if (clickedUFTfn.includes('_')) {
+              var clickedUFTfnList = clickedUFTfn.split('_');
+              var table = document.getElementById("UFTTable");
+              var txtarea = document.getElementById("tarea");
+              txtarea.value = "";
+              var mapOfmethods = obj.MapOfMethods;
+              var functionsList = Object.keys(mapOfmethods);
+              var defnList = Object.values(mapOfmethods);
+
+              for (var j = 0; j < functionsList.length; j++) {
+                for (var m = 0; m < clickedUFTfnList.length; m++) {
+                  var temp1 = functionsList[j].toLowerCase();
+                  var temp2 = clickedUFTfnList[m].toLowerCase();
+                  if (temp1.includes(temp2)) {
+                    var functionDefn = defnList[j];
+                    txtarea.value += ("\n" + functionDefn);
+                    flag = 1;
+                  }
+                }
+
+              }
+            }
+            else {
+              var consecutiveCaps = false;
+              for (var i = 0; i < clickedUFTfn.length - 1; i++) {
+                if (isUpperCase(clickedUFTfn.charAt(i)) && isUpperCase(clickedUFTfn.charAt(i + 1))) {
+                  consecutiveCaps = true;
+                  break;
+                }
+              }
+              if (consecutiveCaps == false) {
+                console.log("Splitting words")
+                var clickedUFTfnList = []
+                var i = 0;
+
+                while (i != clickedUFTfn.length) {
+                  var word = "";
+                  do {
+                    word += clickedUFTfn.charAt(i);
+                    i++;
+                  } while (!isUpperCase(clickedUFTfn.charAt(i)) && i != clickedUFTfn.length)
+                  clickedUFTfnList.push(word);
+                }
+                var table = document.getElementById("UFTTable");
+                var txtarea = document.getElementById("tarea");
+                txtarea.value = "";
+                var mapOfmethods = obj.MapOfMethods;
+                var functionsList = Object.keys(mapOfmethods);
+                var defnList = Object.values(mapOfmethods);
+
+                for (var j = 0; j < functionsList.length; j++) {
+
+                  for (var m = 0; m < clickedUFTfnList.length; m++) {
+                    var temp1 = functionsList[j].toLowerCase();
+                    var temp2 = clickedUFTfnList[m].toLowerCase();
+                    if (temp1.includes(temp2)) {
+                      var functionDefn = defnList[j];
+                      txtarea.value += ("\n" + functionDefn);
+                      flag = 1;
+                    }
+                  }
+
+                }
+              }
+              else {
+              }
+              var txtarea = document.getElementById("tarea");
+              if (flag == 0) {
+                txtarea.value = "No match occured";
+              }
+            }
+          });
+        }
+      });
+    }
+  }
+
+  function createTable() {
+    var arrHead = new Array();
+    arrHead = ['UFT Functions'];
+    var UFTTable = document.createElement('table');
+    UFTTable.setAttribute('id', 'UFTTable');            // SET THE TABLE ID.
+    var tr = UFTTable.insertRow(-1);
+    for (var h = 0; h < arrHead.length; h++) {
+      var th = document.createElement('th');          // TABLE HEADER.
+      th.innerHTML = arrHead[h];
+      tr.appendChild(th);
+    }
+    var div = document.getElementById('cont');
+    div.appendChild(UFTTable);    // ADD THE TABLE TO YOUR WEB PAGE.
+  }
+  function isUpperCase(str) {
+    return (str == str.toUpperCase())
+  }
+</script>
+
+</html>
