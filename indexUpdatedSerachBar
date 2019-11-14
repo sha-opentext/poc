@@ -1,0 +1,375 @@
+<html>
+
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <style>
+    .accordion {
+      background-color: #eee;
+      color: #444;
+      cursor: pointer;
+      padding: 18px;
+      width: 100%;
+      border: none;
+      text-align: left;
+      outline: none;
+      font-size: 15px;
+      transition: 0.4s;
+    }
+
+    .active,
+    .accordion:hover {
+      background-color: #ccc;
+    }
+
+    .panel {
+      padding: 0 18px;
+      display: none;
+      background-color: white;
+      overflow: hidden;
+    }
+
+    .splitscreen {
+      display: flex;
+    }
+
+    .splitscreen .left {
+      flex: 1;
+    }
+
+    .splitscreen .right {
+      flex: 1;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 12px 20px;
+      box-sizing: border-box;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      background-color: #f8f8f8;
+      resize: none;
+    }
+
+  </style>
+</head>
+
+<table style="width:50%" id="initial">
+  <tr>
+    <th>PacakgePath</th>
+    <th><input type="text" id="packagepath"></th>
+
+  </tr>
+  <tr>
+    <th>SrcPath</th>
+    <th><input type="text" id="srcpath"></th>
+
+  </tr>
+  <tr>
+    <th>UTFpath</th>
+    <th><input type="text" id="utfpath"></th>
+  </tr>
+</table>
+<tr>
+  <button type="button" id="getFn" onclick="listfn()">GetFunctions</button>
+</tr>
+
+<div class="splitscreen">
+  <div class="left" id="cont">
+    <input id="myInput" type="text" name="myCountry" placeholder="Type Here">
+    <Button id="searchbtn" type="button">Search</Button>
+    <Button id="clear" type="button" onclick="clearfn()">Clear</Button>
+  </div>
+
+</div>
+<div id="accordianElement"></div>
+
+<script>
+  document.getElementById("cont").style.visibility = "hidden";
+  var settings = {
+    "async": true,
+    "crossDomain": true,
+    "url": "http://localhost:8080/migration/rest/results?=",
+    "method": "GET",
+    "headers": {
+      "Accept": "text/plain",
+    }
+  }
+
+
+  function listfn() {
+    document.getElementById("cont").style.visibility = "visible";
+    document.getElementById("getFn").style.visibility = "hidden";
+    //createTable()
+    $.ajax(settings).done(function (response) {
+
+      var obj = JSON.parse(response);
+      var i;
+      var uftList = obj.UFTFunctions.fnsList; //length=3
+
+      // var str = obj.UFTFunctions.fnsList + '';
+      // var res = str.split(',').join('\n');
+
+      // var table = document.getElementById("UFTTable");
+      // for (i = 0; i < uftList.length; i++) {
+      //   var tr = UFTTable.insertRow();
+      //   var th = document.createElement("BUTTON");
+      //   th.innerHTML = uftList[i];
+      //   tr.appendChild(th);
+      // }
+      for (i = 0; i < uftList.length; i++) {
+        uftList[i] = uftList[i].trim();
+      }
+      console.log(uftList)
+      autocomplete(document.getElementById("myInput"), uftList);
+      var bnsearch = document.getElementById("searchbtn");
+
+
+      bnsearch.addEventListener("click", function (event) {
+        document.getElementById("accordianElement").innerHTML = "";
+        var clickedUFTfn = document.getElementById("myInput").value;
+        clickedUFTfn=clickedUFTfn.substring(0,clickedUFTfn.indexOf("("));
+        console.log(clickedUFTfn)
+        var flag = 0;
+        if (clickedUFTfn.includes('_')) {
+          console.log("Underscore split")
+          var clickedUFTfnListTemp = clickedUFTfn.split('_');
+          var clickedUFTfnList = [];
+          for (var i = 0; i < clickedUFTfnListTemp.length; i++) {
+            if (clickedUFTfnListTemp[i].length > 2)
+              clickedUFTfnList.push(clickedUFTfnListTemp[i])
+          }
+          var table = document.getElementById("UFTTable");
+
+          var mapOfmethods = obj.MapOfMethods;
+          var functionsList = Object.keys(mapOfmethods);
+          var defnList = Object.values(mapOfmethods);
+
+          for (var j = 0; j < functionsList.length; j++) {
+            for (var m = 0; m < clickedUFTfnList.length; m++) {
+              var temp1 = functionsList[j].toLowerCase();
+              var temp2 = clickedUFTfnList[m].toLowerCase();
+              console.log(temp1)
+              console.log(temp2)
+              if (temp1.includes(temp2)) {
+                console.log("match " + temp1 + temp2)
+                var functionDefn = defnList[j];
+                //  txtarea.value += ("\n" + functionDefn);
+                appendAccordianElement(functionsList[j], defnList[j])
+                flag = 1;
+              }
+            }
+
+          }
+          addListenersToAccordian();
+          if(flag==0){
+            alert("No match occured");
+          }
+        }
+        else {
+          var consecutiveCaps = false;
+          for (var i = 0; i < clickedUFTfn.length - 1; i++) {
+            if (isUpperCase(clickedUFTfn.charAt(i)) && isUpperCase(clickedUFTfn.charAt(i + 1))) {
+              consecutiveCaps = true;
+              break;
+            }
+          }
+          if (consecutiveCaps == false) {
+            console.log("Splitting words")
+            var clickedUFTfnList = []
+            var i = 0;
+
+            while (i != clickedUFTfn.length) {
+              var word = "";
+              do {
+                word += clickedUFTfn.charAt(i);
+                i++;
+              } while (!isUpperCase(clickedUFTfn.charAt(i)) && i != clickedUFTfn.length)
+              clickedUFTfnList.push(word);
+            }
+            var table = document.getElementById("UFTTable");
+
+            var mapOfmethods = obj.MapOfMethods;
+            var functionsList = Object.keys(mapOfmethods);
+            var defnList = Object.values(mapOfmethods);
+
+            for (var j = 0; j < functionsList.length; j++) {
+
+              for (var m = 0; m < clickedUFTfnList.length; m++) {
+                var temp1 = functionsList[j].toLowerCase();
+                var temp2 = clickedUFTfnList[m].toLowerCase();
+                if (temp1.includes(temp2)) {
+                  var functionDefn = defnList[j];
+                  appendAccordianElement(functionsList[j], defnList[j])
+                  flag = 1;
+                }
+              }
+
+            }
+            addListenersToAccordian();
+          }
+          else {
+            // No match occured
+            alert("No match occured");
+
+          }
+
+        }
+
+      });
+
+    });
+
+  }
+
+  function createTable() {
+    var arrHead = new Array();
+    arrHead = ['UFT Functions'];
+    var UFTTable = document.createElement('table');
+    UFTTable.setAttribute('id', 'UFTTable');            // SET THE TABLE ID.
+    var tr = UFTTable.insertRow(-1);
+    for (var h = 0; h < arrHead.length; h++) {
+      var th = document.createElement('th');          // TABLE HEADER.
+      th.innerHTML = arrHead[h];
+      tr.appendChild(th);
+    }
+    var div = document.getElementById('cont');
+    div.appendChild(UFTTable);    // ADD THE TABLE TO YOUR WEB PAGE.
+  }
+  function isUpperCase(str) {
+    return (str == str.toUpperCase())
+  }
+  function appendAccordianElement(fnName, fnDetails) {
+    document.getElementById("accordianElement").style.visibility = "hidden";
+    console.log("in fn")
+    var rootdiv = document.getElementById('accordianElement');
+    var accElement = document.createElement('button');
+    accElement.innerHTML = fnName;
+    accElement.setAttribute('class', 'accordion');
+    var content = document.createElement('textarea');
+    content.innerHTML = fnDetails;
+    content.style.display = "none";
+    rootdiv.appendChild(accElement);
+    rootdiv.appendChild(content);
+  }
+  function addListenersToAccordian() {
+    var acc = document.getElementsByClassName("accordion");
+    for (var i = 0; i < acc.length; i++) {
+      acc[i].addEventListener("click", function () {
+        this.classList.toggle("active");
+        var panel = this.nextElementSibling;
+        if (panel.style.display === "block") {
+          panel.style.display = "none";
+        } else {
+          panel.style.display = "block";
+        }
+      });
+    }
+    document.getElementById("accordianElement").style.visibility = "visible";
+  }
+  function autocomplete(inp, arr) {
+    console.log("in auto")
+    /*the autocomplete function takes two arguments,
+    the text field element and an array of possible autocompleted values:*/
+    var currentFocus;
+    /*execute a function when someone writes in the text field:*/
+    inp.addEventListener("input", function (e) {
+      var a, b, i, val = this.value;
+      /*close any already open lists of autocompleted values*/
+      closeAllLists();
+      if (!val) { return false; }
+      currentFocus = -1;
+      /*create a DIV element that will contain the items (values):*/
+      a = document.createElement("DIV");
+      a.setAttribute("id", this.id + "autocomplete-list");
+      a.setAttribute("class", "autocomplete-items");
+      /*append the DIV element as a child of the autocomplete container:*/
+      this.parentNode.appendChild(a);
+      /*for each item in the array...*/
+      for (i = 0; i < arr.length; i++) {
+        /*check if the item starts with the same letters as the text field value:*/
+        if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+          /*create a DIV element for each matching element:*/
+          b = document.createElement("DIV");
+          /*make the matching letters bold:*/
+          b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
+          b.innerHTML += arr[i].substr(val.length);
+          /*insert a input field that will hold the current array item's value:*/
+          b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+          /*execute a function when someone clicks on the item value (DIV element):*/
+          b.addEventListener("click", function (e) {
+            /*insert the value for the autocomplete text field:*/
+            inp.value = this.getElementsByTagName("input")[0].value;
+            /*close the list of autocompleted values,
+            (or any other open lists of autocompleted values:*/
+            closeAllLists();
+          });
+          a.appendChild(b);
+        }
+      }
+    });
+    /*execute a function presses a key on the keyboard:*/
+    inp.addEventListener("keydown", function (e) {
+      console.log('key pressed')
+      var x = document.getElementById(this.id + "autocomplete-list");
+      if (x) x = x.getElementsByTagName("div");
+      if (e.keyCode == 40) {
+        /*If the arrow DOWN key is pressed,
+        increase the currentFocus variable:*/
+        currentFocus++;
+        /*and and make the current item more visible:*/
+        addActive(x);
+      } else if (e.keyCode == 38) { //up
+        /*If the arrow UP key is pressed,
+        decrease the currentFocus variable:*/
+        currentFocus--;
+        /*and and make the current item more visible:*/
+        addActive(x);
+      } else if (e.keyCode == 13) {
+        /*If the ENTER key is pressed, prevent the form from being submitted,*/
+        e.preventDefault();
+        if (currentFocus > -1) {
+          /*and simulate a click on the "active" item:*/
+          if (x) x[currentFocus].click();
+        }
+      }
+    });
+    function addActive(x) {
+      /*a function to classify an item as "active":*/
+      if (!x) return false;
+      /*start by removing the "active" class on all items:*/
+      removeActive(x);
+      if (currentFocus >= x.length) currentFocus = 0;
+      if (currentFocus < 0) currentFocus = (x.length - 1);
+      /*add class "autocomplete-active":*/
+      x[currentFocus].classList.add("autocomplete-active");
+    }
+    function removeActive(x) {
+      /*a function to remove the "active" class from all autocomplete items:*/
+      for (var i = 0; i < x.length; i++) {
+        x[i].classList.remove("autocomplete-active");
+      }
+    }
+    function closeAllLists(elmnt) {
+      /*close all autocomplete lists in the document,
+      except the one passed as an argument:*/
+      var x = document.getElementsByClassName("autocomplete-items");
+      for (var i = 0; i < x.length; i++) {
+        if (elmnt != x[i] && elmnt != inp) {
+          x[i].parentNode.removeChild(x[i]);
+        }
+      }
+    }
+    /*execute a function when someone clicks in the document:*/
+    document.addEventListener("click", function (e) {
+      closeAllLists(e.target);
+    });
+  }
+  function clearfn(){
+    document.getElementById("accordianElement").innerHTML = "";
+    document.getElementById("myInput").value="";
+  }
+
+</script>
+
+</html>
